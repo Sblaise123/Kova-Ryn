@@ -1,11 +1,31 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { llmService } from '../services/llmService';
 import { storageService } from '../services/storageService';
 import { ChatRequest, Message } from '../types';
 import { logger } from '../utils/logger';
 
+// lightweight llmService implementation used by chatController
+export const llmService = {
+  async *streamResponse(messages: Message[]) {
+    // Simple placeholder stream implementation; replace with real LLM streaming logic.
+    const response = await this.generateResponse(messages);
+    // Split response into small chunks for streaming
+    const chunks = response.match(/.{1,100}/g) || [];
+    for (const chunk of chunks) {
+      // simulate asynchronous chunking
+      await new Promise((r) => setTimeout(r, 1));
+      yield chunk;
+    }
+  },
+
+  async generateResponse(messages: Message[]) {
+    // Placeholder synchronous response; replace with actual LLM call.
+    const last = messages[messages.length - 1];
+    return `Echo: ${last?.content ?? ''}`;
+  },
+};
+
 export const chatController = async (
-  request: FastifyRequest,
+  request: FastifyRequest<{ Body: ChatRequest }>,
   reply: FastifyReply
 ) => {
   const { messages, stream, conversationId } = request.body;

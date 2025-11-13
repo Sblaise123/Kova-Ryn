@@ -4,7 +4,7 @@ import { TTSRequest } from '../types';
 import { logger } from '../utils/logger';
 
 export const ttsController = async (
-  request: FastifyRequest,
+  request: FastifyRequest<{ Body: TTSRequest }>,
   reply: FastifyReply
 ) => {
   const { text, voiceId } = request.body;

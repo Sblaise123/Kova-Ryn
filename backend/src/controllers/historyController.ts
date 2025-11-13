@@ -3,11 +3,10 @@ import { storageService } from '../services/storageService';
 import { logger } from '../utils/logger';
 
 export const historyController = async (
-  request: FastifyRequest,
+  request: FastifyRequest<{ Querystring: { conversation_id?: string } }>,
   reply: FastifyReply
 ) => {
   const { conversation_id } = request.query;
-
   try {
     if (conversation_id) {
       const history = storageService.getHistory(conversation_id);

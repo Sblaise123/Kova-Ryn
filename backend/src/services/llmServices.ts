@@ -17,7 +17,7 @@ class LLMService {
     }
   }
 
-  async generateResponse(messages: Message[]): Promise {
+  async generateResponse(messages: Message[]): Promise<string> {
     const sanitized = sanitizeMessages(messages);
 
     if (!this.client || config.enableMocking) {
@@ -42,7 +42,7 @@ class LLMService {
     }
   }
 
-  async *streamResponse(messages: Message[]): AsyncGenerator {
+  async *streamResponse(messages: Message[]): AsyncGenerator<string, void, unknown> {
     const sanitized = sanitizeMessages(messages);
 
     if (!this.client || config.enableMocking) {
@@ -82,7 +82,7 @@ class LLMService {
 
   private async *mockStreamResponse(
     messages: Message[]
-  ): AsyncGenerator {
+  ): AsyncGenerator<string, void, unknown> {
     const response = this.mockResponse(messages);
     const words = response.split(' ');
 

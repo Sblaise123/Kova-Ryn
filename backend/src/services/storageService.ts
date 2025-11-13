@@ -3,7 +3,7 @@ import { ConversationHistory, Message } from '../types';
 import { logger } from '../utils/logger';
 
 class StorageService {
-  private conversations: Map = new Map();
+  private conversations: Map<string, ConversationHistory> = new Map();
 
   saveMessage(conversationId: string, message: Message): string {
     const id = conversationId || uuidv4();
