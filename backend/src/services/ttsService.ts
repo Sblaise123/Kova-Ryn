@@ -10,7 +10,7 @@ class TTSService {
     this.apiKey = config.elevenLabsApiKey;
   }
 
-  async textToSpeech(text: string, voiceId?: string): Promise {
+  async textToSpeech(text: string, voiceId?: string): Promise<Buffer> {
     if (!this.apiKey || config.enableMocking) {
       return this.mockTTS(text);
     }

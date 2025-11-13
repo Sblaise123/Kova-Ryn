@@ -38,12 +38,12 @@ class StorageService {
     const now = Date.now();
     let cleared = 0;
 
-    for (const [id, conv] of this.conversations.entries()) {
+    this.conversations.forEach((conv, id) => {
       if (now - conv.updatedAt > maxAge) {
         this.conversations.delete(id);
         cleared++;
       }
-    }
+    });
 
     if (cleared > 0) {
       logger.info(`Cleared ${cleared} old conversations`);
