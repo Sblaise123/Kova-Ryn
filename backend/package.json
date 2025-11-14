@@ -1,32 +1,39 @@
 {
   "name": "ai-chat-backend",
   "version": "1.0.0",
-  "main": "dist/index.js",
-  "license": "MIT",
-  "type": "commonjs",
+  "description": "AI Chat Platform Backend with Claude & ElevenLabs",
+  "main": "dist/server.js",
   "scripts": {
-    "dev": "ts-node src/server.ts",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:integration": "jest --testPathPattern=integration",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "1.11.0",
-    "axios": "^1.6.8",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.1",
-    "eventsource": "^2.0.2",
-    "fastify": "^4.22.2",
-    "fastify-cors": "^8.3.0",
-    "fastify-rate-limit": "^7.6.0",
+    "@anthropic-ai/sdk": "^0.69.0",
+    "@fastify/cors": "^8.4.2",
+    "axios": "^1.6.5",
+    "dotenv": "^16.3.1",
+    "fastify": "^4.25.2",
     "uuid": "^9.0.1",
-    "winston": "^3.11.0"
+    "winston": "^3.11.0",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@types/node": "^20.11.24",
-    "@types/cors": "^2.8.17",
-    "@types/eventsource": "^1.1.12",
+    "@types/jest": "^29.5.11",
+    "@types/node": "^20.10.6",
     "@types/uuid": "^9.0.7",
-    "typescript": "^5.4.3",
-    "ts-node": "^10.9.2"
+    "@typescript-eslint/eslint-plugin": "^6.17.0",
+    "@typescript-eslint/parser": "^6.17.0",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.3.3"
   }
 }
