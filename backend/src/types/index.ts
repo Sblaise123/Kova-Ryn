@@ -27,3 +27,10 @@ export interface ConversationHistory {
   createdAt: number;
   updatedAt: number;
 }
+
+export interface StreamChunk {
+  content?: string;
+  error?: string;
+  conversationId?: string;
+  done?: boolean; 
+}
