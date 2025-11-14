@@ -1,75 +1,64 @@
-'use client';
-
-import { useState, useRef } from 'react';
+// components/ChatContainer.tsx
+import { useState, useEffect, useRef } from 'react';
 import { Message } from '@/lib/types';
+import { ApiClient } from '@/lib/api';
 import MessageBubble from './MessageBubble';
 import MessageComposer from './MessageComposer';
-import { ApiClient } from '@/lib/api';
 import { v4 as uuidv4 } from 'uuid';
 
-const ChatContainer: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'system-1',
-      role: 'assistant',
-      content: 'Hi, my name is Kova. Ask me anything so I can help you.',
-      timestamp: Date.now(),
-    },
-  ]);
+export default function ChatContainer() {
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const conversationIdRef = useRef<string | null>(null);
 
-  const handleSend = async (userContent: string) => {
+  useEffect(() => {
+    // Initialize with Kova's welcome message
+    const welcomeMessage: Message = {
+      id: uuidv4(),
+      role: 'assistant',
+      content: 'Hi, my name is Kova. Ask me anything so I can help you.',
+    };
+    setMessages([welcomeMessage]);
+  }, []);
+
+  const handleSend = async (text: string) => {
+    if (!text.trim()) return;
+
     const userMessage: Message = {
       id: uuidv4(),
       role: 'user',
-      content: userContent,
-      timestamp: Date.now(),
+      content: text,
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
 
-    // Add placeholder assistant message
-    const assistantMessage: Message = {
-      id: uuidv4(),
-      role: 'assistant',
-      content: '',
-      timestamp: Date.now(),
-    };
-    setMessages((prev) => [...prev, assistantMessage]);
-
     try {
-      // Use the callback-based stream
-      ApiClient.streamMessage([...messages, userMessage], conversationIdRef.current, {
-        onChunk: (chunk) => {
-          if (chunk.content) {
-            setMessages((prev) => {
-              const updated = [...prev];
-              updated[updated.length - 1].content += chunk.content;
-              return updated;
-            });
-          }
-          if (chunk.conversationId) {
-            conversationIdRef.current = chunk.conversationId;
-          }
-        },
-        onError: (err) => {
-          console.error(err);
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: uuidv4(),
-              role: 'assistant',
-              content: 'Oops! Something went wrong. Please try again.',
-              timestamp: Date.now(),
-            },
-          ]);
-        },
-        onComplete: () => {
-          setIsLoading(false);
-        },
-      });
+      await ApiClient.streamMessage(
+        [...messages, userMessage],
+        conversationIdRef.current ?? undefined,
+        {
+          onChunk: (chunk) => {
+            if (chunk.content) {
+              setMessages((prev) => {
+                const updated = [...prev];
+                updated[updated.length - 1].content += chunk.content;
+                return updated;
+              });
+            }
+          },
+          onComplete: (conversationId) => {
+            if (conversationId) {
+              conversationIdRef.current = conversationId;
+            }
+            setIsLoading(false);
+          },
+          onError: (err) => {
+            console.error(err);
+            setIsLoading(false);
+          },
+        }
+      );
     } catch (err) {
       console.error(err);
       setIsLoading(false);
@@ -79,11 +68,10 @@ const ChatContainer: React.FC = () => {
   return (
     <div className="flex flex-col h-full max-h-[80vh] bg-gray-900 rounded-lg p-4 space-y-4 overflow-y-auto">
       {messages.map((msg) => (
-        <MessageBubble key={msg.id} role={msg.role} content={msg.content} />
+        <MessageBubble key={msg.id} content={msg.content} role={msg.role} />
       ))}
+
       <MessageComposer onSend={handleSend} loading={isLoading} />
     </div>
   );
-};
-
-export default ChatContainer;
+}
