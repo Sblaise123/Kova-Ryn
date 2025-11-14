@@ -37,7 +37,7 @@ class TTSService {
         }
       );
 
-      return Buffer.from(response.data);
+      return Buffer.from(response.data as ArrayBuffer);
     } catch (error) {
       logger.error('Error generating TTS:', error);
       throw new Error('Failed to generate speech');

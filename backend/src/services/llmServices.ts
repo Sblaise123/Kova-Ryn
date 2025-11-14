@@ -31,7 +31,7 @@ class LLMService {
         messages: sanitized.map((msg) => ({
           role: msg.role === 'user' ? 'user' : 'assistant',
           content: msg.content,
-        })),
+        })) as Anthropic.MessageParam[],
       });
 
       const content = response.content[0];
@@ -57,7 +57,7 @@ class LLMService {
         messages: sanitized.map((msg) => ({
           role: msg.role === 'user' ? 'user' : 'assistant',
           content: msg.content,
-        })),
+        })) as Anthropic.MessageParam[],
         stream: true,
       });
 
