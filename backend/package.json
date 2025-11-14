@@ -1,31 +1,32 @@
 {
   "name": "ai-chat-backend",
   "version": "1.0.0",
-  "main": "dist/server.js",
+  "main": "dist/index.js",
+  "license": "MIT",
+  "type": "commonjs",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "dev": "ts-node src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
-    "lint": "eslint src --ext .ts",
-    "test": "jest"
+    "start": "node dist/server.js"
   },
   "dependencies": {
-    "axios": "^1.6.5",
-    "fastify": "^4.26.0",
-    "fastify-cors": "^8.2.0",
-    "pino": "^8.17.0",
-    "@anthropic-ai/sdk": "^0.68.0",
-    "dotenv": "^16.3.1"
+    "@anthropic-ai/sdk": "1.11.0",
+    "axios": "^1.6.8",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.1",
+    "eventsource": "^2.0.2",
+    "fastify": "^4.22.2",
+    "fastify-cors": "^8.3.0",
+    "fastify-rate-limit": "^7.6.0",
+    "uuid": "^9.0.1",
+    "winston": "^3.11.0"
   },
   "devDependencies": {
-    "typescript": "^5.3.3",
-    "@types/node": "^20.10.6",
-    "@types/pino": "^8.6.1",
-    "ts-node-dev": "^2.0.0",
-    "jest": "^29.7.0",
-    "@types/jest": "^29.5.3",
-    "eslint": "^8.56.0",
-    "@typescript-eslint/eslint-plugin": "^6.8.0",
-    "@typescript-eslint/parser": "^6.8.0"
+    "@types/node": "^20.11.24",
+    "@types/cors": "^2.8.17",
+    "@types/eventsource": "^1.1.12",
+    "@types/uuid": "^9.0.7",
+    "typescript": "^5.4.3",
+    "ts-node": "^10.9.2"
   }
 }
