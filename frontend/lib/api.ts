@@ -1,4 +1,5 @@
-import axios, { AxiosInstance } from 'axios';
+import axios from 'axios';
+import type { AxiosInstance } from 'axios';
 import { Message, ChatResponse, StreamChunk, ConversationHistory } from './types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -8,93 +9,54 @@ class ApiClient {
 
   constructor() {
     this.client = axios.create({
-      baseURL: `${API_URL}/api`,
+      baseURL: API_URL,
+      withCredentials: true,
       headers: {
         'Content-Type': 'application/json',
       },
-      timeout: 30000,
     });
   }
 
-  async sendMessage(
-    messages: Message[],
-    conversationId?: string
-  ): Promise<ChatResponse> {
-    const response = await this.client.post<ChatResponse>('/chat', {
-      messages,
-      stream: false,
-      conversationId,
-    });
-    return response.data;
+  async login(email: string, password: string) {
+    return this.client.post('/auth/login', { email, password });
   }
 
-  async *streamMessage(
-    messages: Message[],
-    conversationId?: string
-  ): AsyncGenerator<StreamChunk, void, unknown> {
-    const response = await fetch(`${API_URL}/api/chat`, {
+  async register(email: string, password: string) {
+    return this.client.post('/auth/register', { email, password });
+  }
+
+  async sendMessage(messages: Message[]): Promise<ChatResponse> {
+    return this.client.post('/chat', { messages });
+  }
+
+  async streamChat(messages: Message[], onChunk: (chunk: StreamChunk) => void) {
+    const res = await fetch(`${API_URL}/chat/stream`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messages,
-        stream: true,
-        conversationId,
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages }),
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+    const reader = res.body?.getReader();
+    if (!reader) return;
 
-    const reader = response.body?.getReader();
-    if (!reader) {
-      throw new Error('No response body');
-    }
+    let decoder = new TextDecoder();
 
-    const decoder = new TextDecoder();
-    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      const text = decoder.decode(value, { stream: true });
+      const lines = text.split('\n').filter(Boolean);
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            try {
-              const parsed: StreamChunk = JSON.parse(data);
-              yield parsed;
-            } catch (e) {
-              console.error('Failed to parse SSE data:', e);
-            }
-          }
+      for (const line of lines) {
+        try {
+          const json = JSON.parse(line);
+          onChunk(json);
+        } catch (e) {
+          console.error('Chunk parse error:', e);
         }
       }
-    } finally {
-      reader.releaseLock();
     }
-  }
-
-  async textToSpeech(text: string, voiceId?: string): Promise<Blob> {
-    const response = await this.client.post(
-      '/tts',
-      { text, voiceId },
-      { responseType: 'blob' }
-    );
-    return response.data;
-  }
-
-  async getHistory(conversationId?: string): Promise<ConversationHistory | ConversationHistory[]> {
-    const params = conversationId ? { conversation_id: conversationId } : {};
-    const response = await this.client.get('/history', { params });
-    return response.data;
   }
 }
 
