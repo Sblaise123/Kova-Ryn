@@ -1,27 +1,24 @@
 'use client';
 
-import { Message } from '@/lib/types';
-import { motion } from 'framer-motion';
+import React from 'react';
 
 interface MessageBubbleProps {
-  message: Message;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
 }
 
-export default function MessageBubble({ message }: MessageBubbleProps) {
-  const isUser = message.role === 'user';
+const MessageBubble: React.FC<MessageBubbleProps> = ({ role, content }) => {
+  const isUser = role === 'user';
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
-      className={`max-w-[80%] px-4 py-2 rounded-xl break-words ${
-        isUser
-          ? 'bg-primary-600 text-white self-end'
-          : 'bg-gray-800 text-gray-200 self-start'
+    <div
+      className={`p-3 rounded-lg max-w-[70%] break-words ${
+        isUser ? 'bg-blue-600 text-white self-end' : 'bg-gray-700 text-white self-start'
       }`}
     >
-      {message.content}
-    </motion.div>
+      {content}
+    </div>
   );
-}
+};
+
+export default MessageBubble;
