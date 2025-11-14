@@ -1,14 +1,8 @@
 export interface Message {
-  id: string;
+  id?: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp?: number;
-}
-
-export interface ChatRequest {
-  messages: { role: string; content: string }[];
-  stream?: boolean;
-  conversationId?: string;
 }
 
 export interface ChatResponse {
@@ -18,7 +12,9 @@ export interface ChatResponse {
 }
 
 export interface StreamChunk {
-  content?: string;  // partial content from streaming API
+  content?: string;
+  conversationId?: string;
+  done?: boolean;
   error?: string;
 }
 
@@ -27,4 +23,10 @@ export interface ConversationHistory {
   messages: Message[];
   createdAt: number;
   updatedAt: number;
+}
+
+// Add this TTSRequest type for type safety
+export interface TTSRequest {
+  text: string;
+  voiceId?: string;
 }
