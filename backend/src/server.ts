@@ -9,6 +9,11 @@ const fastify = Fastify({
   logger: false, // Using custom Winston logger
 });
 
+const PORT = process.env.PORT || 3001;
+app.listen({ port: Number(PORT), host: '0.0.0.0' }, () => {
+  console.log(`Backend running on port ${PORT}`);
+});
+
 // Register plugins
 fastify.register(cors, {
   origin: config.corsOrigins,
