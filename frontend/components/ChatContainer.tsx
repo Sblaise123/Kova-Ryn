@@ -30,44 +30,48 @@ const ChatContainer: React.FC = () => {
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
 
+    // Add placeholder assistant message
+    const assistantMessage: Message = {
+      id: uuidv4(),
+      role: 'assistant',
+      content: '',
+      timestamp: Date.now(),
+    };
+    setMessages((prev) => [...prev, assistantMessage]);
+
     try {
-      // Add placeholder for assistant typing effect
-      const assistantMessage: Message = {
-        id: uuidv4(),
-        role: 'assistant',
-        content: '',
-        timestamp: Date.now(),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-
-      // Stream assistant response
-      for await (const chunk of ApiClient.streamMessage([...messages, userMessage], conversationIdRef.current)) {
-        if (chunk.error) throw new Error(chunk.error);
-
-        if (chunk.content) {
-          setMessages((prev) => {
-            const updated = [...prev];
-            updated[updated.length - 1].content += chunk.content;
-            return updated;
-          });
-        }
-
-        if (chunk.conversationId) {
-          conversationIdRef.current = chunk.conversationId;
-        }
-      }
-    } catch (err: any) {
-      console.error(err);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: uuidv4(),
-          role: 'assistant',
-          content: 'Oops! Something went wrong. Please try again.',
-          timestamp: Date.now(),
+      // Use the callback-based stream
+      ApiClient.streamMessage([...messages, userMessage], conversationIdRef.current, {
+        onChunk: (chunk) => {
+          if (chunk.content) {
+            setMessages((prev) => {
+              const updated = [...prev];
+              updated[updated.length - 1].content += chunk.content;
+              return updated;
+            });
+          }
+          if (chunk.conversationId) {
+            conversationIdRef.current = chunk.conversationId;
+          }
         },
-      ]);
-    } finally {
+        onError: (err) => {
+          console.error(err);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: uuidv4(),
+              role: 'assistant',
+              content: 'Oops! Something went wrong. Please try again.',
+              timestamp: Date.now(),
+            },
+          ]);
+        },
+        onComplete: () => {
+          setIsLoading(false);
+        },
+      });
+    } catch (err) {
+      console.error(err);
       setIsLoading(false);
     }
   };
