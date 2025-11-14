@@ -1,39 +1,50 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import React, { useState, FormEvent } from 'react';
+import { motion } from 'framer-motion';
 
 interface MessageComposerProps {
-  onSend: (content: string) => void;
-  disabled?: boolean;
+  onSend: (message: string) => void;
+  loading?: boolean;
 }
 
-export default function MessageComposer({ onSend, disabled }: MessageComposerProps) {
-  const [text, setText] = useState('');
+const MessageComposer: React.FC<MessageComposerProps> = ({ onSend, loading = false }) => {
+  const [message, setMessage] = useState('');
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (!text.trim()) return;
-    onSend(text);
-    setText('');
+    if (!message.trim() || loading) return;
+    onSend(message.trim());
+    setMessage('');
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-center gap-2">
-      <input
+    <form onSubmit={handleSubmit} className="flex items-center space-x-2 mt-2">
+      <motion.input
         type="text"
-        placeholder="Type a message..."
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        disabled={disabled}
-        className="flex-1 px-4 py-2 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        placeholder="Type your message..."
+        className="flex-1 px-4 py-2 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        whileFocus={{ scale: 1.02 }}
+        transition={{ duration: 0.2 }}
+        aria-label="Type your message"
       />
-      <button
+
+      <motion.button
         type="submit"
-        disabled={disabled || !text.trim()}
-        className="px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+        disabled={loading}
+        className={`px-4 py-2 rounded-lg text-white ${
+          loading ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+        }`}
+        whileTap={{ scale: 0.95 }}
+        transition={{ duration: 0.1 }}
+        aria-label="Send message"
       >
-        Send
-      </button>
+        {loading ? 'Sending...' : 'Send'}
+      </motion.button>
     </form>
   );
-}
+};
+
+export default MessageComposer;
