@@ -1,63 +1,57 @@
+// frontend/lib/api.ts
 import axios from 'axios';
-import type { AxiosInstance } from 'axios';
 import { Message, ChatResponse, StreamChunk, ConversationHistory } from './types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-class ApiClient {
-  private client: AxiosInstance;
+export class ApiClient {
+  private axiosInstance = axios.create({
+    baseURL: API_URL,
+    headers: { 'Content-Type': 'application/json' },
+  });
 
-  constructor() {
-    this.client = axios.create({
-      baseURL: API_URL,
-      withCredentials: true,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+  async sendMessage(messages: Message[], conversationId?: string): Promise<ChatResponse> {
+    const res = await this.axiosInstance.post<ChatResponse>('/api/chat', {
+      messages,
+      conversationId,
+      stream: false,
     });
+    return res.data;
   }
 
-  async login(email: string, password: string) {
-    return this.client.post('/auth/login', { email, password });
-  }
-
-  async register(email: string, password: string) {
-    return this.client.post('/auth/register', { email, password });
-  }
-
-  async sendMessage(messages: Message[]): Promise<ChatResponse> {
-    return this.client.post('/chat', { messages });
-  }
-
-  async streamChat(messages: Message[], onChunk: (chunk: StreamChunk) => void) {
-    const res = await fetch(`${API_URL}/chat/stream`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages }),
+  async *streamMessage(messages: Message[], conversationId?: string): AsyncGenerator<StreamChunk> {
+    const res = await this.axiosInstance.post(`/api/chat`, {
+      messages,
+      conversationId,
+      stream: true,
+    }, {
+      responseType: 'stream', // Node.js streaming, Axios in browser may need SSE or fetch
     });
 
-    const reader = res.body?.getReader();
-    if (!reader) return;
+    const reader = res.data.getReader?.(); // for Fetch API / ReadableStream
+    if (!reader) {
+      yield { error: 'Streaming not supported' };
+      return;
+    }
 
     let decoder = new TextDecoder();
+    let done = false;
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const text = decoder.decode(value, { stream: true });
-      const lines = text.split('\n').filter(Boolean);
-
-      for (const line of lines) {
-        try {
-          const json = JSON.parse(line);
-          onChunk(json);
-        } catch (e) {
-          console.error('Chunk parse error:', e);
-        }
+    while (!done) {
+      const { value, done: readDone } = await reader.read();
+      done = readDone;
+      if (value) {
+        const text = decoder.decode(value);
+        yield { content: text };
       }
     }
   }
+
+  async getHistory(conversationId: string): Promise<ConversationHistory> {
+    const res = await this.axiosInstance.get(`/api/history?conversation_id=${conversationId}`);
+    return res.data;
+  }
 }
 
-export const api = new ApiClient();
+// ✅ Export it properly
+export default new ApiClient();
