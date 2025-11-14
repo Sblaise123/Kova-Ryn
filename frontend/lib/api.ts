@@ -1,57 +1,63 @@
-// frontend/lib/api.ts
 import axios from 'axios';
-import { Message, ChatResponse, StreamChunk, ConversationHistory } from './types';
+import {
+  Message,
+  ChatRequest,
+  ChatResponse,
+  StreamChunk,
+  ConversationHistory,
+} from './types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-export class ApiClient {
-  private axiosInstance = axios.create({
-    baseURL: API_URL,
-    headers: { 'Content-Type': 'application/json' },
-  });
+const axiosInstance = axios.create({
+  baseURL: API_URL,
+  headers: { 'Content-Type': 'application/json' },
+});
 
-  async sendMessage(messages: Message[], conversationId?: string): Promise<ChatResponse> {
-    const res = await this.axiosInstance.post<ChatResponse>('/api/chat', {
-      messages,
-      conversationId,
-      stream: false,
-    });
+export class ApiClient {
+  // Fetch conversation history
+  static async getHistory(conversationId: string): Promise<ConversationHistory> {
+    const res = await axiosInstance.get(`/history?conversation_id=${conversationId}`);
     return res.data;
   }
 
-  async *streamMessage(messages: Message[], conversationId?: string): AsyncGenerator<StreamChunk> {
-    const res = await this.axiosInstance.post(`/api/chat`, {
-      messages,
-      conversationId,
-      stream: true,
-    }, {
-      responseType: 'stream', // Node.js streaming, Axios in browser may need SSE or fetch
+  // Send a normal chat request (non-streaming)
+  static async sendMessage(messages: Message[], conversationId?: string): Promise<ChatResponse> {
+    const payload: ChatRequest = { messages, stream: false, conversationId };
+    const res = await axiosInstance.post('/chat', payload);
+    return res.data;
+  }
+
+  // Streamed messages using Server-Sent Events
+  static async *streamMessage(messages: Message[], conversationId?: string): AsyncGenerator<StreamChunk> {
+    const payload: ChatRequest = { messages, stream: true, conversationId };
+    const eventSource = new EventSource(`${API_URL}/chat/stream?conversationId=${conversationId}`, {
+      withCredentials: true,
     });
 
-    const reader = res.data.getReader?.(); // for Fetch API / ReadableStream
-    if (!reader) {
-      yield { error: 'Streaming not supported' };
-      return;
-    }
+    // Note: This is a simplified example using fetch streaming for Vercel compatibility
+    const res = await fetch(`${API_URL}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
 
-    let decoder = new TextDecoder();
-    let done = false;
+    if (!res.body) return;
 
-    while (!done) {
-      const { value, done: readDone } = await reader.read();
-      done = readDone;
-      if (value) {
-        const text = decoder.decode(value);
-        yield { content: text };
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunkStr = decoder.decode(value, { stream: true });
+      try {
+        const chunk: StreamChunk = JSON.parse(chunkStr);
+        yield chunk;
+      } catch {
+        // partial JSON might arrive; ignore
       }
     }
   }
-
-  async getHistory(conversationId: string): Promise<ConversationHistory> {
-    const res = await this.axiosInstance.get(`/api/history?conversation_id=${conversationId}`);
-    return res.data;
-  }
 }
-
-// ✅ Export it properly
-export default new ApiClient();

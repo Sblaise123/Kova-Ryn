@@ -1,8 +1,14 @@
 export interface Message {
+  id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp?: number;
-  isStreaming?: boolean;
+}
+
+export interface ChatRequest {
+  messages: { role: string; content: string }[];
+  stream?: boolean;
+  conversationId?: string;
 }
 
 export interface ChatResponse {
@@ -12,9 +18,7 @@ export interface ChatResponse {
 }
 
 export interface StreamChunk {
-  chunk?: string;
-  done?: boolean;
-  conversationId?: string;
+  content?: string;  // partial content from streaming API
   error?: string;
 }
 
