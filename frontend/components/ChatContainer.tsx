@@ -12,6 +12,7 @@ export default function ChatContainer() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -25,6 +26,7 @@ export default function ChatContainer() {
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
+    setError(null);
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -34,6 +36,10 @@ export default function ChatContainer() {
         body: JSON.stringify({ messages: [...messages, userMsg], stream: false })
       });
       
+      if (!res.ok) {
+        throw new Error(`Server returned ${res.status} ${res.statusText}`);
+      }
+      
       const data = await res.json();
       setMessages(prev => [...prev, { 
         role: 'assistant', 
@@ -41,12 +47,19 @@ export default function ChatContainer() {
         timestamp: Date.now()
       }]);
     } catch (err) {
-      console.error(err);
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: 'Error: Could not connect to server',
-        timestamp: Date.now()
-      }]);
+      console.error('Chat error:', err);
+      
+      let errorMessage = 'Failed to send message. Please try again.';
+      if (err instanceof Error) {
+        if (err.message.includes('Failed to fetch')) {
+          errorMessage = 'Cannot connect to server. Check your internet connection.';
+        } else if (err.message.includes('500')) {
+          errorMessage = 'Server error. Please try again in a moment.';
+        }
+      }
+      
+      setError(errorMessage);
+      setMessages(prev => prev.slice(0, -1));
     } finally {
       setLoading(false);
     }
@@ -61,7 +74,16 @@ export default function ChatContainer() {
         </div>
 
         <div style={styles.messages}>
-          {messages.length === 0 && (
+          {error && (
+            <div style={styles.errorBanner}>
+              <span>{error}</span>
+              <button onClick={() => setError(null)} style={styles.closeButton}>
+                ×
+              </button>
+            </div>
+          )}
+
+          {messages.length === 0 && !error && (
             <div style={styles.empty}>
               <p style={styles.emptyTitle}>Start a conversation</p>
               <p style={styles.emptyText}>Type a message below</p>
@@ -158,6 +180,26 @@ const styles = {
     overflowY: 'auto' as const,
     marginBottom: '20px',
     minHeight: '300px'
+  },
+  errorBanner: {
+    background: 'rgba(239, 68, 68, 0.2)',
+    border: '1px solid rgba(239, 68, 68, 0.5)',
+    padding: '12px 16px',
+    borderRadius: '8px',
+    marginBottom: '16px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    fontSize: '14px'
+  },
+  closeButton: {
+    background: 'transparent',
+    border: 'none',
+    color: 'white',
+    cursor: 'pointer',
+    fontSize: '20px',
+    padding: '0 8px',
+    lineHeight: 1
   },
   empty: {
     textAlign: 'center' as const,
