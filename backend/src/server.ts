@@ -10,8 +10,19 @@ const fastify = Fastify({
 });
 
 // Register plugins
-fastify.register(cors, {
-  origin: config.corsOrigins,
+astify.register(cors, {
+  origin: (origin, cb) => {
+    const allowed = [
+      "https://kova-ryn-suie.vercel.app/",
+      "http://localhost:3000"
+    ];
+
+    if (!origin || allowed.includes(origin)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Not allowed by CORS"), false);
+    }
+  },
   credentials: true,
 });
 
