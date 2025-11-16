@@ -62,10 +62,7 @@ class LLMService {
       });
 
       for await (const event of stream) {
-        if (
-          event.type === 'content_block_delta' &&
-          event.delta.type === 'text_delta'
-        ) {
+        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
           yield event.delta.text;
         }
       }
@@ -80,12 +77,9 @@ class LLMService {
     return `Mock response to: "${lastMessage.content.substring(0, 50)}..."`;
   }
 
-  private async *mockStreamResponse(
-    messages: Message[]
-  ): AsyncGenerator<string, void, unknown> {
+  private async *mockStreamResponse(messages: Message[]): AsyncGenerator<string, void, unknown> {
     const response = this.mockResponse(messages);
     const words = response.split(' ');
-
     for (const word of words) {
       yield word + ' ';
       await new Promise((resolve) => setTimeout(resolve, 50));
