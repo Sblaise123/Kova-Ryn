@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { ApiClient } from '../lib/api';
+import { ApiClient } from '@/lib/api';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -10,14 +10,13 @@ interface Message {
 }
 
 export default function ChatContainer() {
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: 'Hi, my name is Kova! Ask me anything so I can help you.', timestamp: Date.now() },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Auto-scroll to bottom when messages update
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -25,33 +24,44 @@ export default function ChatContainer() {
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
-    const userMsg: Message = { role: 'user', content: input.trim(), timestamp: Date.now() };
+    const userMsg: Message = {
+      role: 'user',
+      content: input.trim(),
+      timestamp: Date.now(),
+    };
+
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
     setError(null);
 
     try {
-      // Send message via ApiClient
-      const res = await ApiClient.sendMessage([...messages, userMsg]);
-
-      setMessages(prev => [
-        ...prev,
-        { role: 'assistant', content: res.content, timestamp: Date.now() },
-      ]);
+      // Stream assistant response
+      const source = ApiClient.streamMessage([...messages, userMsg], undefined, {
+        onChunk: (chunk) => {
+          if (chunk.content) {
+            setMessages(prev => {
+              // Append to last assistant message or create new one
+              const last = prev[prev.length - 1];
+              if (last?.role === 'assistant') {
+                const updated = { ...last, content: last.content + chunk.content };
+                return [...prev.slice(0, -1), updated];
+              } else {
+                return [...prev, { role: 'assistant', content: chunk.content, timestamp: Date.now() }];
+              }
+            });
+          }
+        },
+        onComplete: () => setLoading(false),
+        onError: (err) => {
+          console.error('Streaming error:', err);
+          setError('Failed to get AI response.');
+          setLoading(false);
+        },
+      });
     } catch (err) {
       console.error('Chat error:', err);
-      let errorMessage = 'Failed to send message. Please try again.';
-      if (err instanceof Error) {
-        if (err.message.includes('Failed to fetch')) {
-          errorMessage = 'Cannot connect to server. Check your internet connection.';
-        } else if (err.message.includes('500')) {
-          errorMessage = 'Server error. Please try again in a moment.';
-        }
-      }
-      setError(errorMessage);
-      setMessages(prev => prev.slice(0, -1)); // remove last user message
-    } finally {
+      setError('Failed to send message.');
       setLoading(false);
     }
   };
@@ -68,19 +78,33 @@ export default function ChatContainer() {
           {error && (
             <div style={styles.errorBanner}>
               <span>{error}</span>
-              <button onClick={() => setError(null)} style={styles.closeButton}>×</button>
+              <button onClick={() => setError(null)} style={styles.closeButton}>
+                ×
+              </button>
+            </div>
+          )}
+
+          {messages.length === 0 && !error && (
+            <div style={styles.empty}>
+              <p style={styles.emptyTitle}>Start a conversation</p>
+              <p style={styles.emptyText}>Type a message below</p>
             </div>
           )}
 
           {messages.map((msg, i) => (
-            <div key={i} style={{
-              ...styles.messageRow,
-              justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start'
-            }}>
-              <div style={{
-                ...styles.bubble,
-                background: msg.role === 'user' ? '#0ea5e9' : 'rgba(255,255,255,0.1)'
-              }}>
+            <div
+              key={i}
+              style={{
+                ...styles.messageRow,
+                justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+              }}
+            >
+              <div
+                style={{
+                  ...styles.bubble,
+                  background: msg.role === 'user' ? '#0ea5e9' : 'rgba(255,255,255,0.1)',
+                }}
+              >
                 {msg.content}
               </div>
             </div>
@@ -91,6 +115,7 @@ export default function ChatContainer() {
               <div style={styles.bubble}>Thinking...</div>
             </div>
           )}
+
           <div ref={messagesEndRef} />
         </div>
 
@@ -110,7 +135,7 @@ export default function ChatContainer() {
             style={{
               ...styles.button,
               opacity: loading || !input.trim() ? 0.5 : 1,
-              cursor: loading || !input.trim() ? 'not-allowed' : 'pointer'
+              cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
             }}
           >
             {loading ? '...' : 'Send'}
@@ -121,15 +146,46 @@ export default function ChatContainer() {
   );
 }
 
+// --- Styles ---
 const styles = {
-  container: { maxWidth: '800px', margin: '0 auto', padding: '20px', minHeight: '100vh', display: 'flex', alignItems: 'center' },
-  card: { width: '100%', background: 'rgba(255,255,255,0.1)', borderRadius: '16px', padding: '24px', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)', minHeight: '600px', display: 'flex', flexDirection: 'column' as const },
+  container: {
+    maxWidth: '800px',
+    margin: '0 auto',
+    padding: '20px',
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  card: {
+    width: '100%',
+    background: 'rgba(255,255,255,0.1)',
+    borderRadius: '16px',
+    padding: '24px',
+    backdropFilter: 'blur(10px)',
+    border: '1px solid rgba(255,255,255,0.2)',
+    minHeight: '600px',
+    display: 'flex',
+    flexDirection: 'column' as const,
+  },
   header: { marginBottom: '24px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '16px' },
-  title: { fontSize: '24px', fontWeight: 'bold', margin: 0 },
+  title: { fontSize: '24px', fontWeight: 'bold', marginBottom: '8px', margin: 0 },
   subtitle: { fontSize: '14px', opacity: 0.8, margin: 0 },
   messages: { flex: 1, overflowY: 'auto' as const, marginBottom: '20px', minHeight: '300px' },
-  errorBanner: { background: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.5)', padding: '12px 16px', borderRadius: '8px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px' },
+  errorBanner: {
+    background: 'rgba(239, 68, 68, 0.2)',
+    border: '1px solid rgba(239, 68, 68, 0.5)',
+    padding: '12px 16px',
+    borderRadius: '8px',
+    marginBottom: '16px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    fontSize: '14px',
+  },
   closeButton: { background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', fontSize: '20px', padding: '0 8px', lineHeight: 1 },
+  empty: { textAlign: 'center' as const, padding: '60px 20px' },
+  emptyTitle: { fontSize: '18px', marginBottom: '8px' },
+  emptyText: { fontSize: '14px', opacity: 0.7 },
   messageRow: { display: 'flex', marginBottom: '12px' },
   bubble: { padding: '12px 16px', borderRadius: '16px', maxWidth: '70%', wordBreak: 'break-word' as const },
   inputContainer: { display: 'flex', gap: '8px' },
