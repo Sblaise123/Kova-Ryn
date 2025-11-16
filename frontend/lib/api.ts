@@ -15,19 +15,19 @@ const axiosInstance = axios.create({
 export class ApiClient {
   // Get conversation history
   static async getHistory(conversationId: string): Promise<ConversationHistory> {
-    const res = await axiosInstance.get(`/history?conversation_id=${conversationId}`);
+    const res = await axiosInstance.get(`/api/history?conversation_id=${conversationId}`);
     return res.data as ConversationHistory;
   }
 
   // Send a normal chat request (non-streaming)
   static async sendMessage(messages: Message[], conversationId?: string): Promise<ChatResponse> {
-    const res = await axiosInstance.post('/chat', { messages, conversationId });
+    const res = await axiosInstance.post('/api/chat', { messages, conversationId });
     return res.data as ChatResponse;
   }
 
   // Send text to TTS
   static async textToSpeech(data: TTSRequest) {
-    const res = await axiosInstance.post('/tts', data, { responseType: 'arraybuffer' });
+    const res = await axiosInstance.post('/api/tts', data, { responseType: 'arraybuffer' });
     return res.data;
   }
 
@@ -44,27 +44,25 @@ export class ApiClient {
     const { onChunk, onComplete, onError } = callbacks || {};
 
     const query = conversationId ? `?conversation_id=${conversationId}` : '';
-    const url = `${API_URL}/chat/stream${query}`;
+    const url = `${API_URL}/api/chat/stream${query}`;
 
+    // Create EventSource connection
     const source = new EventSource(url);
 
-    // Send initial payload via POST (server can read from query if needed)
-    fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages }),
-    }).catch((err) => {
+    // Send initial payload via POST to /api/chat (NOT to the SSE URL)
+    axiosInstance.post('/api/chat', { messages, conversationId }).catch((err) => {
       onError?.(err);
       source.close();
     });
 
+    // Receive streamed tokens
     source.onmessage = (event) => {
       try {
         const chunk: StreamChunk = JSON.parse(event.data);
         onChunk?.(chunk);
 
-        if (chunk.done === true && onComplete) {
-          onComplete(chunk.conversationId);
+        if (chunk.done === true) {
+          onComplete?.(chunk.conversationId);
           source.close();
         }
       } catch (err) {
