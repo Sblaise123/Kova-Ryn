@@ -39,7 +39,7 @@ export default async function routes(fastify: FastifyInstance) {
   fastify.post('/chat', chatController);
 
   // SSE streaming endpoint
-  fastify.get('/chat/stream', chatStreamController);
+  fastify.post('/chat/stream', chatStreamController);
 
   // History endpoint
   fastify.get('/history', historyController);
