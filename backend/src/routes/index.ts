@@ -1,34 +1,28 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { chatController } from '../controllers/chatController';
 import { ttsController } from '../controllers/ttsController';
 import { historyController } from '../controllers/historyController';
 
 export default async function routes(fastify: FastifyInstance) {
   // Chat endpoint - POST only
-  fastify.post('/chat', async (request, reply) => {
-    return chatController(request, reply);
-  });
+  fastify.post('/chat', chatController);
 
-  // TTS endpoint - POST only
-  fastify.post('/tts', async (request, reply) => {
-    return ttsController(request, reply);
-  });
+  // TTS endpoint - POST only  
+  fastify.post('/tts', ttsController);
 
   // History endpoint - GET only
-  fastify.get('/history', async (request, reply) => {
-    return historyController(request, reply);
-  });
+  fastify.get('/history', historyController);
 
   // Add OPTIONS support for CORS preflight
-  fastify.options('/chat', async (request, reply) => {
+  fastify.options('/chat', async (request: FastifyRequest, reply: FastifyReply) => {
     reply.send();
   });
 
-  fastify.options('/tts', async (request, reply) => {
+  fastify.options('/tts', async (request: FastifyRequest, reply: FastifyReply) => {
     reply.send();
   });
 
-  fastify.options('/history', async (request, reply) => {
+  fastify.options('/history', async (request: FastifyRequest, reply: FastifyReply) => {
     reply.send();
   });
 }
