@@ -1,72 +1,58 @@
 import axios from 'axios';
-import { Message, ChatResponse, StreamChunk, ConversationHistory, TTSRequest } from './types';
+
+export interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+}
+
+export interface ChatResponse {
+  content: string;
+  conversationId?: string;
+}
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-// Axios instance
 const axiosInstance = axios.create({
   baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Standard API client
 export class ApiClient {
-  // Get conversation history
-  static async getHistory(conversationId: string): Promise<ConversationHistory> {
-    const res = await axiosInstance.get(`/api/history?conversation_id=${conversationId}`);
-    return res.data as ConversationHistory;
-  }
-
-  // Send a normal chat request (non-streaming)
-  static async sendMessage(messages: Message[], conversationId?: string): Promise<ChatResponse> {
-    const res = await axiosInstance.post('/api/chat', { messages, conversationId });
+  // Send a message
+  static async sendMessage(messages: Message[]): Promise<ChatResponse> {
+    const res = await axiosInstance.post('/chat', { messages });
     return res.data as ChatResponse;
   }
 
-  // Send text to TTS
-  static async textToSpeech(data: TTSRequest) {
-    const res = await axiosInstance.post('/api/tts', data, { responseType: 'arraybuffer' });
+  // Optional: fetch conversation history
+  static async getHistory(conversationId: string) {
+    const res = await axiosInstance.get(`/history?conversation_id=${conversationId}`);
     return res.data;
   }
 
-  // Stream chat response using SSE
+  // SSE streaming (if implemented on backend)
   static streamMessage(
     messages: Message[],
     conversationId?: string,
     callbacks?: {
-      onChunk?: (chunk: StreamChunk) => void;
+      onChunk?: (chunk: { content: string; done?: boolean; conversationId?: string }) => void;
       onComplete?: (conversationId?: string) => void;
       onError?: (err: any) => void;
     }
   ): EventSource {
     const { onChunk, onComplete, onError } = callbacks || {};
-
     const query = conversationId ? `?conversation_id=${conversationId}` : '';
-    const url = `${API_URL}/api/chat/stream${query}`;
+    const url = `${API_URL}/chat/stream${query}`;
 
-    // Create EventSource connection
     const source = new EventSource(url);
 
-    // Send initial payload via POST to /api/chat (NOT to the SSE URL)
-    axiosInstance.post('/api/chat', { messages, conversationId }).catch((err) => {
-      onError?.(err);
-      source.close();
-    });
-
-    // Receive streamed tokens
     source.onmessage = (event) => {
       try {
-        const chunk: StreamChunk = JSON.parse(event.data);
+        const chunk = JSON.parse(event.data);
         onChunk?.(chunk);
-
-        if (chunk.done === true) {
-          onComplete?.(chunk.conversationId);
-          source.close();
-        }
+        if (chunk.done) onComplete?.(chunk.conversationId);
       } catch (err) {
-        console.error('Error parsing SSE chunk:', err);
         onError?.(err);
         source.close();
       }
