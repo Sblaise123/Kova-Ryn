@@ -13,9 +13,9 @@ export interface ChatResponse {
 
 export interface StreamChunk {
   content?: string;
-  conversationId?: string;
   done?: boolean;
-  error?: string;
+  conversationId?: string;
+  error?: string; 
 }
 
 export interface ConversationHistory {
