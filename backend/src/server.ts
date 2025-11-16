@@ -9,32 +9,40 @@ const fastify = Fastify({
   logger: false,
 });
 
-// Register plugins
+// CORS MUST be registered BEFORE routes
 fastify.register(cors, {
-  origin: (origin, cb) => {
-    const allowed = [
-      "https://kova-ryn-suie.vercel.app/",
-      "http://localhost:3000"
-    ];
-
-    if (!origin || allowed.includes(origin)) {
-      cb(null, true);
-    } else {
-      cb(new Error("Not allowed by CORS"), false);
-    }
-  },
+  origin: true, // Allow all origins for now (debug)
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 });
 
-// Register routes
+// Register routes with /api prefix
 fastify.register(routes, { prefix: '/api' });
 
 // Error handler
 fastify.setErrorHandler(errorHandler);
 
-// Health check
+// Health check (no /api prefix)
 fastify.get('/health', async () => {
-  return { status: 'ok', timestamp: new Date().toISOString() };
+  return { 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    environment: config.nodeEnv 
+  };
+});
+
+// Root endpoint
+fastify.get('/', async () => {
+  return { 
+    message: 'AI Chat Backend',
+    endpoints: {
+      health: '/health',
+      chat: '/api/chat',
+      tts: '/api/tts',
+      history: '/api/history'
+    }
+  };
 });
 
 const start = async () => {
@@ -44,6 +52,8 @@ const start = async () => {
       host: '0.0.0.0',
     });
     logger.info(`Server running on port ${config.port}`);
+    logger.info(`Environment: ${config.nodeEnv}`);
+    logger.info(`CORS enabled for: ${config.corsOrigins.join(', ')}`);
   } catch (err) {
     logger.error('Error starting server:', err);
     process.exit(1);

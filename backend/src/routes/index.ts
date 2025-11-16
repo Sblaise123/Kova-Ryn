@@ -1,17 +1,34 @@
 import { FastifyInstance } from 'fastify';
-
-// Fallback chatController if the external module is not present.
-// Replace this with: import { chatController } from '../controllers/chatController';
-const chatController = async (request: any, reply: any) => {
-  reply.code(501).send({ error: 'chatController not implemented (missing ../controllers/chatController)' });
-};
-
+import { chatController } from '../controllers/chatController';
 import { ttsController } from '../controllers/ttsController';
 import { historyController } from '../controllers/historyController';
-import { validateChatRequest, validateTTSRequest } from '../middleware/validation';
 
 export default async function routes(fastify: FastifyInstance) {
-  fastify.post('/chat', { preHandler: validateChatRequest }, chatController);
-  fastify.post('/tts', { preHandler: validateTTSRequest }, ttsController);
-  fastify.get('/history', historyController);
+  // Chat endpoint - POST only
+  fastify.post('/chat', async (request, reply) => {
+    return chatController(request, reply);
+  });
+
+  // TTS endpoint - POST only
+  fastify.post('/tts', async (request, reply) => {
+    return ttsController(request, reply);
+  });
+
+  // History endpoint - GET only
+  fastify.get('/history', async (request, reply) => {
+    return historyController(request, reply);
+  });
+
+  // Add OPTIONS support for CORS preflight
+  fastify.options('/chat', async (request, reply) => {
+    reply.send();
+  });
+
+  fastify.options('/tts', async (request, reply) => {
+    reply.send();
+  });
+
+  fastify.options('/history', async (request, reply) => {
+    reply.send();
+  });
 }

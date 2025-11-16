@@ -1,36 +1,33 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { llmService } from '../services/llmService';
 import { storageService } from '../services/storageService';
-import { ChatRequest, Message } from '../types';
 import { logger } from '../utils/logger';
 
-// lightweight llmService implementation used by chatController
-export const llmService = {
-  async *streamResponse(messages: Message[]) {
-    // Simple placeholder stream implementation; replace with real LLM streaming logic.
-    const response = await this.generateResponse(messages);
-    // Split response into small chunks for streaming
-    const chunks = response.match(/.{1,100}/g) || [];
-    for (const chunk of chunks) {
-      // simulate asynchronous chunking
-      await new Promise((r) => setTimeout(r, 1));
-      yield chunk;
-    }
-  },
-
-  async generateResponse(messages: Message[]) {
-    // Placeholder synchronous response; replace with actual LLM call.
-    const last = messages[messages.length - 1];
-    return `Echo: ${last?.content ?? ''}`;
-  },
-};
+interface ChatRequestBody {
+  messages: Array<{
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+  }>;
+  stream?: boolean;
+  conversationId?: string;
+}
 
 export const chatController = async (
-  request: FastifyRequest<{ Body: ChatRequest }>,
+  request: FastifyRequest<{ Body: ChatRequestBody }>,
   reply: FastifyReply
 ) => {
-  const { messages, stream, conversationId } = request.body;
-
   try {
+    const { messages, stream, conversationId } = request.body;
+
+    // Validate request
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return reply.status(400).send({ 
+        error: 'Invalid request: messages array is required' 
+      });
+    }
+
+    logger.info(`Received chat request with ${messages.length} messages`);
+
     // Save user message
     const userMessage = messages[messages.length - 1];
     const convId = storageService.saveMessage(
@@ -39,10 +36,11 @@ export const chatController = async (
     );
 
     if (stream) {
-      // Server-Sent Events streaming
+      // Streaming response
       reply.raw.setHeader('Content-Type', 'text/event-stream');
       reply.raw.setHeader('Cache-Control', 'no-cache');
       reply.raw.setHeader('Connection', 'keep-alive');
+      reply.raw.setHeader('Access-Control-Allow-Origin', '*');
 
       let fullResponse = '';
 
@@ -53,12 +51,11 @@ export const chatController = async (
         }
 
         // Save assistant message
-        const assistantMessage: Message = {
+        storageService.saveMessage(convId, {
           role: 'assistant',
           content: fullResponse,
           timestamp: Date.now(),
-        };
-        storageService.saveMessage(convId, assistantMessage);
+        });
 
         reply.raw.write(
           `data: ${JSON.stringify({ done: true, conversationId: convId })}\n\n`
@@ -71,24 +68,31 @@ export const chatController = async (
       }
     } else {
       // Non-streaming response
+      logger.info('Generating response...');
       const content = await llmService.generateResponse(messages);
+      
+      logger.info('Response generated successfully');
 
       // Save assistant message
-      const assistantMessage: Message = {
+      storageService.saveMessage(convId, {
         role: 'assistant',
         content,
         timestamp: Date.now(),
-      };
-      storageService.saveMessage(convId, assistantMessage);
+      });
 
-      reply.send({
+      return reply.send({
         content,
         conversationId: convId,
         timestamp: Date.now(),
       });
     }
   } catch (error) {
-    logger.error('Chat error:', error);
-    reply.status(500).send({ error: 'Failed to process chat request' });
+    logger.error('Chat controller error:', error);
+    
+    // Return proper error response
+    return reply.status(500).send({ 
+      error: 'Failed to process chat request',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
