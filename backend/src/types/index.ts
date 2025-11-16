@@ -1,27 +1,29 @@
 export interface Message {
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   content: string;
-  timestamp: number;
+  timestamp?: number;
 }
 
-export interface ConversationHistory {
-  conversationId: string;
+export interface ChatRequest {
   messages: Message[];
+  stream?: boolean;
+  conversationId?: string;
 }
 
 export interface ChatResponse {
   content: string;
-  conversationId?: string;
-}
-
-export interface StreamChunk {
-  content?: string;
-  done?: boolean;
-  conversationId?: string;
-  error?: string; // added optional error
+  conversationId: string;
+  timestamp: number;
 }
 
 export interface TTSRequest {
   text: string;
   voiceId?: string;
+}
+
+export interface ConversationHistory {
+  conversationId: string;
+  messages: Message[];
+  createdAt: number;
+  updatedAt: number;
 }
