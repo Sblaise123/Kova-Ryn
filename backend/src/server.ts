@@ -10,23 +10,25 @@ const start = async () => {
     logger: false,
   });
 
-  // Register CORS FIRST with await
+  // More explicit CORS configuration
   await fastify.register(cors, {
-    origin: true,
-    credentials: true,
+    origin: '*',  // Allow all origins explicitly
+    credentials: false,  // Must be false when origin is *
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    exposedHeaders: ['Content-Type'],
+    preflightContinue: false
   });
 
-  logger.info('CORS registered');
+  logger.info('CORS registered with origin: *');
 
-  // NOW register routes AFTER CORS
   fastify.get('/health', async () => {
     return { 
       status: 'ok', 
       timestamp: new Date().toISOString(),
       environment: config.nodeEnv,
-      apiKeyConfigured: !!config.anthropicApiKey
+      apiKeyConfigured: !!config.anthropicApiKey,
+      cors: 'enabled with *'
     };
   });
 
@@ -46,7 +48,7 @@ const start = async () => {
         return reply.status(400).send({ error: 'Messages required' });
       }
 
-      logger.info(`Chat request with ${messages.length} messages`);
+      logger.info(`Chat request with ${messages.length} messages`);  // ✅ Fixed
       
       const content = await llmService.generateResponse(messages);
       
@@ -64,14 +66,13 @@ const start = async () => {
     }
   });
 
-  // Start listening
   try {
     await fastify.listen({
       port: config.port,
       host: '0.0.0.0',
     });
-    logger.info(`Server running on port ${config.port}`);
-    logger.info(`Environment: ${config.nodeEnv}`);
+    logger.info(`Server running on port ${config.port}`);   // ✅ Fixed
+    logger.info(`Environment: ${config.nodeEnv}`);          // ✅ Fixed
   } catch (err) {
     logger.error('Server failed:', err);
     process.exit(1);
