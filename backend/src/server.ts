@@ -1,9 +1,9 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
-import { config } from './config';
-import { logger } from './utils/logger';
-import { llmService } from './services/llmService';
-import { storageService } from './services/storageService';
+import { config } from './config/index.js';          
+import { logger } from './utils/logger.js';          
+import { llmService } from './services/llmService.js';    
+import { storageService } from './services/storageService.js';
 
 async function main() {
   const fastify = Fastify({
