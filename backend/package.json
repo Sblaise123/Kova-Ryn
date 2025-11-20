@@ -1,7 +1,6 @@
 {
   "name": "ai-chat-backend",
-  "version": "1.0.0",
-  "type": "module",               
+  "version": "1.0.0",              
   "description": "AI Chat Platform Backend with Claude & ElevenLabs",
   "main": "dist/server.js",
   "scripts": {
