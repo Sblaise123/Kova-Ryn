@@ -5,17 +5,18 @@ import { logger } from './utils/logger';
 import { llmService } from './services/llmService';
 import { storageService } from './services/storageService';
 
-const fastify = Fastify({
-  logger: false,
-});
+async function main() {
+  const fastify = Fastify({
+    logger: false,
+  });
 
-(async () => {
-  // ✅ Register CORS with await
+  // Register CORS before defining routes
   await fastify.register(cors, {
     origin: (origin, cb) => {
-      logger.info(`CORS check for origin: ${origin}`); // Debug log
+      logger.info(`CORS check for origin: ${origin}`);
       
       if (!origin) {
+        logger.info('CORS allowed: no origin (direct access)');
         cb(null, true);
         return;
       }
@@ -33,7 +34,10 @@ const fastify = Fastify({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
   });
-
+  
+  logger.info('CORS registered successfully');
+  
+  // Health check
   fastify.get('/health', async () => {
     return { 
       status: 'ok', 
@@ -43,6 +47,7 @@ const fastify = Fastify({
     };
   });
   
+  // Root endpoint
   fastify.get('/', async () => {
     return { 
       message: 'AI Chat Backend',
@@ -55,6 +60,7 @@ const fastify = Fastify({
     };
   });
   
+  // Chat endpoint
   fastify.post('/api/chat', async (request, reply) => {
     try {
       const body = request.body as any;
@@ -127,6 +133,7 @@ const fastify = Fastify({
     }
   });
   
+  // History endpoint
   fastify.get('/api/history', async (request, reply) => {
     try {
       const query = request.query as any;
@@ -148,6 +155,7 @@ const fastify = Fastify({
     }
   });
   
+  // OPTIONS handlers
   fastify.options('/api/chat', async (request, reply) => {
     reply.send();
   });
@@ -156,6 +164,7 @@ const fastify = Fastify({
     reply.send();
   });
   
+  // Error handler
   fastify.setErrorHandler((error, request, reply) => {
     logger.error('Unhandled error:', error);
     reply.status(error.statusCode || 500).send({
@@ -164,23 +173,7 @@ const fastify = Fastify({
     });
   });
   
-  const start = async () => {
-    try {
-      await fastify.listen({
-        port: config.port,
-        host: '0.0.0.0',
-      });
-      
-      logger.info(`Server running on port ${config.port}`);
-      logger.info(`Environment: ${config.nodeEnv}`);
-      logger.info(`API Key configured: ${config.anthropicApiKey ? 'Yes' : 'No'}`);
-      logger.info(`CORS origins: ${config.corsOrigins.join(', ')}`);
-    } catch (err) {
-      logger.error('Error starting server:', err);
-      process.exit(1);
-    }
-  };
-  
+  // Graceful shutdown handlers
   const gracefulShutdown = async (signal: string) => {
     logger.info(`${signal} received, closing server gracefully`);
     await fastify.close();
@@ -190,8 +183,24 @@ const fastify = Fastify({
   process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
   process.on('SIGINT', () => gracefulShutdown('SIGINT'));
   
-  await start();
-})().catch(err => {
-  logger.error('Initialization error:', err);
+  // Start server
+  try {
+    await fastify.listen({
+      port: config.port,
+      host: '0.0.0.0',
+    });
+    
+    logger.info(`Server running on port ${config.port}`);
+    logger.info(`Environment: ${config.nodeEnv}`);
+    logger.info(`API Key configured: ${config.anthropicApiKey ? 'Yes' : 'No'}`);
+    logger.info(`CORS origins: ${config.corsOrigins.join(', ')}`);
+  } catch (err) {
+    logger.error('Error starting server:', err);
+    process.exit(1);
+  }
+}
+
+main().catch((err) => {
+  logger.error('Fatal error starting application:', err);
   process.exit(1);
 });
