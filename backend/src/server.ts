@@ -9,11 +9,35 @@ const fastify = Fastify({
   logger: false,
 });
 
+// ✅ UPDATED CORS CONFIGURATION
 fastify.register(cors, {
-  origin: true,
+  origin: (origin, cb) => {
+    // Allow requests with no origin (like mobile apps, curl, Postman)
+    if (!origin) {
+      cb(null, true);
+      return;
+    }
+
+    // Allow localhost and all vercel.app domains
+    if (origin.includes('localhost') || origin.includes('vercel.app')) {
+      cb(null, true);
+      return;
+    }
+
+    // Check against configured origins
+    if (config.corsOrigins.includes(origin)) {
+      cb(null, true);
+      return;
+    }
+
+    // Reject all others
+    cb(new Error('Not allowed by CORS'), false);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 });
 
 fastify.get('/health', async () => {
@@ -173,4 +197,3 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 start();
-
